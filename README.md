@@ -8,6 +8,35 @@ plr.sh must be marked executable.  Also, plr.cfg and plr.sh must be modified to 
 
 In addition, the Kiauh Gcode Shell Command extenstion must be added to Klipper.  You don't need to have Kiuah installed, but you must add gcode_shell_command.py to the contents of your klipper/klippy/extras directory (The extension can be downloaded here: https://github.com/th33xitus/kiauh/blob/master/resources/gcode_shell_command.py )
 
+```
+[gcode_button pw_det]
+pin: ^!PE15
+press_gcode =
+  {% if printer.virtual_sdcard.is_active or printer.print_stats.state == "printing" %}
+    {action_respond_info("Power Loss while Printing!")}
+    M104 S0
+    M140 S0
+    PAUSE INTERUPTONLY=1
+    LOG_Z EOFF=2 ZOFF=10
+    SAVE_VARIABLE VARIABLE=was_interrupted VALUE=True
+    RUN_SHELL_COMMAND CMD=FLUSHDISK
+    G91
+    {% if printer.extruder.can_extrude|lower == 'true' %}
+      G1 E-2 F1000
+    {% else %}
+      {action_respond_info("Power Loss Extruder not hot enough to retract")}
+    {% endif %}
+    G1 Z10 F900
+    G90
+    CANCEL_PRINT INTERUPTONLY=1
+  {% else %}
+    {action_respond_info("Power Loss!")}
+  {% endif %}
+release_gcode =
+  {action_respond_info("Power Returned!")}
+```
+
+
 Finally, this must be added to the end of your start gcode (either macro or slicer):
 SAVE_VARIABLE VARIABLE=was_interrupted VALUE=True
 
